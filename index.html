@@ -4,10 +4,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sports News Ticker</title>
+<title>Custom Sports Ticker</title>
 <style>
   body {
-    margin: 0; background: black; color: white; font-family: Arial, sans-serif;
+    margin: 0; background: #111; color: white; font-family: Arial, sans-serif;
     overflow: hidden;
   }
   #ticker {
@@ -37,14 +37,20 @@
     display: inline-block;
     margin-right: 40px;
   }
+  .label {
+    font-weight: 900;
+    color: #0af;
+    margin-right: 15px;
+  }
 </style>
 </head>
 <body>
 <div id="ticker">
-  <div id="section-nba" class="headline-section active">Loading NBA news...</div>
-  <div id="section-nfl" class="headline-section">Loading NFL news...</div>
-  <div id="section-mlb" class="headline-section">Loading MLB news...</div>
-  <div id="section-nhl" class="headline-section">Loading NHL news...</div>
+  <div id="section-nba" class="headline-section active"><span class="label">NBA:</span>Loading news...</div>
+  <div id="section-nfl" class="headline-section"><span class="label">NFL:</span>Loading news...</div>
+  <div id="section-mlb" class="headline-section"><span class="label">MLB:</span>Loading news...</div>
+  <div id="section-nhl" class="headline-section"><span class="label">NHL:</span>Loading news...</div>
+  <div id="section-bets" class="headline-section"><span class="label">TOP BETS:</span>Loading bets...</div>
 </div>
 
 <script>
@@ -55,12 +61,21 @@
     { id: 'section-nhl', rss: 'https://www.espn.com/espn/rss/nhl/news' }
   ];
 
-  // Fetch headlines from RSS to JSON service
+  // Example static bets data (replace with API if you want)
+  const exampleBets = [
+    "Lakers -3.5 vs Celtics - Game tonight 7:30pm ET",
+    "Packers +4 vs Bears - Sunday 1pm ET",
+    "Yankees ML vs Red Sox - Tomorrow 8pm ET",
+    "Penguins vs Capitals - Over 5.5 goals - Sat 6pm ET"
+  ];
+
   async function fetchHeadlines(rssUrl) {
     try {
-      const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`);
-      const data = await res.json();
-      if (data.status !== 'ok') throw new Error('Failed to fetch RSS');
+      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
+      const dataText = await res.text();
+      const json = JSON.parse(dataText);
+      const data = JSON.parse(json.contents);
+      if (!data.items) throw new Error('Failed to fetch RSS');
       return data.items.slice(0, 8).map(item => item.title);
     } catch (e) {
       console.error(e);
@@ -72,7 +87,7 @@
     for (const section of sections) {
       const headlines = await fetchHeadlines(section.rss);
       const container = document.getElementById(section.id);
-      container.innerHTML = '';
+      container.innerHTML = '<span class="label">' + section.id.split('-')[1].toUpperCase() + ':</span>';
       headlines.forEach(headline => {
         const span = document.createElement('span');
         span.className = 'headline-item';
@@ -80,24 +95,41 @@
         container.appendChild(span);
       });
     }
+    // Update bets section
+    const betsContainer = document.getElementById('section-bets');
+    betsContainer.innerHTML = '<span class="label">TOP BETS:</span>';
+    exampleBets.forEach(bet => {
+      const span = document.createElement('span');
+      span.className = 'headline-item';
+      span.textContent = bet;
+      betsContainer.appendChild(span);
+    });
   }
 
-  // Cycle fade between sections every 10 seconds
   let currentIndex = 0;
   function cycleSections() {
     const prevIndex = currentIndex;
-    currentIndex = (currentIndex + 1) % sections.length;
-
-    document.getElementById(sections[prevIndex].id).classList.remove('active');
-    document.getElementById(sections[currentIndex].id).classList.add('active');
+    currentIndex = (currentIndex + 1) % (sections.length + 1); // +1 for bets
+    if (prevIndex < sections.length) {
+      document.getElementById(sections[prevIndex].id).classList.remove('active');
+    } else {
+      document.getElementById('section-bets').classList.remove('active');
+    }
+    if (currentIndex < sections.length) {
+      document.getElementById(sections[currentIndex].id).classList.add('active');
+    } else {
+      document.getElementById('section-bets').classList.add('active');
+    }
   }
 
   updateSections();
-  setInterval(updateSections, 5 * 60 * 1000); // refresh news every 5 minutes
+  setInterval(updateSections, 5 * 60 * 1000); // refresh news every 5 mins
   setInterval(cycleSections, 10000); // fade every 10 seconds
 </script>
 </body>
 </html>
+
+
 
      
    
