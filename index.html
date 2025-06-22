@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Test Sports Ticker</title>
+<title>Multi-Sport Live Headlines Ticker</title>
 <style>
   body {
     margin: 0; background: #111; color: white; font-family: Arial, sans-serif;
@@ -12,7 +12,7 @@
   }
   #ticker {
     position: relative;
-    height: 70px;
+    height: 50px;
     border-top: 2px solid #444;
     border-bottom: 2px solid #444;
     overflow: hidden;
@@ -22,244 +22,92 @@
     font-weight: bold;
     font-size: 18px;
   }
-  .section {
-    position: absolute;
-    width: 100%;
-    top: 0;
-    left: 0;
-    opacity: 0;
-    transition: opacity 1s ease-in-out;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-  .section.active {
-    opacity: 1;
-    position: relative;
-  }
   .label {
     font-weight: 900;
     color: #0af;
     margin-right: 15px;
     flex-shrink: 0;
   }
-  .scrolling-content {
-    display: inline-block;
+  #headlines {
     white-space: nowrap;
-    will-change: transform;
+    overflow: hidden;
+    flex-grow: 1;
   }
-  .headline-item, .score-item, .bet-item {
+  #headlines span {
     display: inline-block;
-    margin-right: 40px;
+    margin-right: 50px;
   }
-  .scores, .bets {
-    margin-top: 5px;
-    font-weight: normal;
-    font-size: 14px;
-    color: #ddd;
+  /* Scrolling animation */
+  @keyframes scroll-left {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+  #headlines.scrolling {
+    animation: scroll-left 30s linear infinite;
   }
 </style>
 </head>
 <body>
 <div id="ticker">
-  <div id="section-nba" class="section active">
-    <span class="label">NBA</span>
-    <div class="scrolling-content headlines"></div>
-    <div class="scrolling-content scores"></div>
-    <div class="scrolling-content bets"></div>
-  </div>
-  <div id="section-nfl" class="section">
-    <span class="label">NFL</span>
-    <div class="scrolling-content headlines"></div>
-    <div class="scrolling-content scores"></div>
-    <div class="scrolling-content bets"></div>
-  </div>
-  <div id="section-mlb" class="section">
-    <span class="label">MLB</span>
-    <div class="scrolling-content headlines"></div>
-    <div class="scrolling-content scores"></div>
-    <div class="scrolling-content bets"></div>
-  </div>
-  <div id="section-nhl" class="section">
-    <span class="label">NHL</span>
-    <div class="scrolling-content headlines"></div>
-    <div class="scrolling-content scores"></div>
-    <div class="scrolling-content bets"></div>
-  </div>
+  <span class="label">Sports News</span>
+  <div id="headlines">Loading headlines...</div>
 </div>
 
 <script>
-  const sports = [
-    {
-      id: 'nba',
-      headlines: [
-        "Lakers win big over Celtics",
-        "Steph Curry drops 40 points",
-        "NBA playoffs start next week"
-      ],
-      scores: [
-        "Lakers 102 - Celtics 99 (Final)",
-        "Bucks 110 - Nets 115 (OT)"
-      ],
-      bets: [
-        "Lakers -3.5 vs Celtics",
-        "Bucks +4 vs Nets"
-      ]
-    },
-    {
-      id: 'nfl',
-      headlines: [
-        "Packers edge Bears in thriller",
-        "Tom Brady retires again",
-        "Super Bowl predictions are out"
-      ],
-      scores: [
-        "Packers 24 - Bears 21 (Final)",
-        "Cowboys 28 - Giants 27 (Final)"
-      ],
-      bets: [
-        "Packers -2.5 vs Bears",
-        "Cowboys ML vs Giants"
-      ]
-    },
-    {
-      id: 'mlb',
-      headlines: [
-        "Yankees clinch playoff spot",
-        "Dodgers sweep Giants",
-        "MLB All-Star game highlights"
-      ],
-      scores: [
-        "Yankees 5 - Red Sox 3 (Final)",
-        "Dodgers 7 - Giants 6 (Final)"
-      ],
-      bets: [
-        "Yankees ML vs Red Sox",
-        "Dodgers -1.5 vs Giants"
-      ]
-    },
-    {
-      id: 'nhl',
-      headlines: [
-        "Penguins top Capitals again",
-        "Bruins dominate Flyers",
-        "NHL draft prospects to watch"
-      ],
-      scores: [
-        "Penguins 3 - Capitals 2 (Final)",
-        "Bruins 4 - Flyers 1 (Final)"
-      ],
-      bets: [
-        "Penguins vs Capitals Over 5.5",
-        "Bruins ML vs Flyers"
-      ]
-    }
+  const headlinesDiv = document.getElementById('headlines');
+
+  // ESPN RSS feeds for multiple sports
+  const rssFeeds = [
+    'https://www.espn.com/espn/rss/nba/news',
+    'https://www.espn.com/espn/rss/nfl/news',
+    'https://www.espn.com/espn/rss/mlb/news',
+    'https://www.espn.com/espn/rss/nhl/news'
   ];
 
-  // Fill content for each sport section
-  function fillSections() {
-    for (const sport of sports) {
-      const container = document.getElementById(`section-${sport.id}`);
-      const headlinesDiv = container.querySelector('.headlines');
-      const scoresDiv = container.querySelector('.scores');
-      const betsDiv = container.querySelector('.bets');
+  async function fetchFeed(url) {
+    const response = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url));
+    if (!response.ok) throw new Error('Network response was not ok');
+    const data = await response.json();
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+    const items = xmlDoc.querySelectorAll("item");
+    const titles = [];
+    for(let i=0; i<items.length; i++) {
+      const title = items[i].querySelector("title").textContent;
+      titles.push(title);
+    }
+    return titles;
+  }
+
+  async function fetchAllHeadlines() {
+    try {
+      let allHeadlines = [];
+      for(const feed of rssFeeds) {
+        const headlines = await fetchFeed(feed);
+        allHeadlines = allHeadlines.concat(headlines);
+      }
+      // Limit to 40 headlines max
+      allHeadlines = allHeadlines.slice(0,40);
 
       headlinesDiv.innerHTML = '';
-      sport.headlines.forEach(h => {
+      allHeadlines.forEach(h => {
         const span = document.createElement('span');
-        span.className = 'headline-item';
         span.textContent = h;
         headlinesDiv.appendChild(span);
       });
 
-      scoresDiv.innerHTML = '';
-      sport.scores.forEach(s => {
-        const span = document.createElement('span');
-        span.className = 'score-item';
-        span.textContent = s;
-        scoresDiv.appendChild(span);
-      });
-
-      betsDiv.innerHTML = '';
-      sport.bets.forEach(b => {
-        const span = document.createElement('span');
-        span.className = 'bet-item';
-        span.textContent = b;
-        betsDiv.appendChild(span);
-      });
+      // restart animation by removing and adding class
+      headlinesDiv.classList.remove('scrolling');
+      void headlinesDiv.offsetWidth; // trigger reflow
+      headlinesDiv.classList.add('scrolling');
+    } catch (e) {
+      headlinesDiv.textContent = 'Failed to load headlines.';
+      console.error(e);
     }
   }
 
-  // Scroll animation function
-  function animateScroll(element, duration) {
-    const totalWidth = element.scrollWidth;
-    let start = null;
-
-    function step(timestamp) {
-      if (!start) start = timestamp;
-      const elapsed = timestamp - start;
-      const progress = (elapsed % duration) / duration;
-      const x = -progress * totalWidth;
-      element.style.transform = `translateX(${x}px)`;
-      requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
-
-  // Start scrolling animations on active section
-  function startScrolling(section) {
-    const scrollables = section.querySelectorAll('.scrolling-content');
-    scrollables.forEach(el => {
-      el.style.transform = 'translateX(0)';
-      animateScroll(el, 30000);
-    });
-  }
-
-  // Stop scrolling animations by resetting transform
-  function stopScrolling(section) {
-    const scrollables = section.querySelectorAll('.scrolling-content');
-    scrollables.forEach(el => {
-      el.style.transform = 'translateX(0)';
-    });
-  }
-
-  let currentIndex = 0;
-  const fadeDuration = 1000; // ms
-
-  function cycleSections() {
-    const prevIndex = currentIndex;
-    currentIndex = (currentIndex + 1) % sports.length;
-
-    const prevSection = document.getElementById(`section-${sports[prevIndex].id}`);
-    const nextSection = document.getElementById(`section-${sports[currentIndex].id}`);
-
-    prevSection.classList.remove('active');
-    stopScrolling(prevSection);
-
-    setTimeout(() => {
-      nextSection.classList.add('active');
-      startScrolling(nextSection);
-    }, fadeDuration);
-  }
-
-  fillSections();
-  const firstSection = document.getElementById(`section-${sports[0].id}`);
-  startScrolling(firstSection);
-  setInterval(cycleSections, 12000);
+  fetchAllHeadlines();
+  setInterval(fetchAllHeadlines, 5 * 60 * 1000); // update every 5 mins
 </script>
 </body>
 </html>
-
-
-  
-  
-    
-      
-     
-   
-
-  
-
-
-  
-
- 
