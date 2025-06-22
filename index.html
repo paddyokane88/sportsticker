@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fading + Scrolling Sports Ticker</title>
+<title>Test Sports Ticker</title>
 <style>
   body {
     margin: 0; background: #111; color: white; font-family: Arial, sans-serif;
@@ -91,7 +91,11 @@
   const sports = [
     {
       id: 'nba',
-      rss: 'https://www.espn.com/espn/rss/nba/news',
+      headlines: [
+        "Lakers win big over Celtics",
+        "Steph Curry drops 40 points",
+        "NBA playoffs start next week"
+      ],
       scores: [
         "Lakers 102 - Celtics 99 (Final)",
         "Bucks 110 - Nets 115 (OT)"
@@ -103,7 +107,11 @@
     },
     {
       id: 'nfl',
-      rss: 'https://www.espn.com/espn/rss/nfl/news',
+      headlines: [
+        "Packers edge Bears in thriller",
+        "Tom Brady retires again",
+        "Super Bowl predictions are out"
+      ],
       scores: [
         "Packers 24 - Bears 21 (Final)",
         "Cowboys 28 - Giants 27 (Final)"
@@ -115,7 +123,11 @@
     },
     {
       id: 'mlb',
-      rss: 'https://www.espn.com/espn/rss/mlb/news',
+      headlines: [
+        "Yankees clinch playoff spot",
+        "Dodgers sweep Giants",
+        "MLB All-Star game highlights"
+      ],
       scores: [
         "Yankees 5 - Red Sox 3 (Final)",
         "Dodgers 7 - Giants 6 (Final)"
@@ -127,7 +139,11 @@
     },
     {
       id: 'nhl',
-      rss: 'https://www.espn.com/espn/rss/nhl/news',
+      headlines: [
+        "Penguins top Capitals again",
+        "Bruins dominate Flyers",
+        "NHL draft prospects to watch"
+      ],
       scores: [
         "Penguins 3 - Capitals 2 (Final)",
         "Bruins 4 - Flyers 1 (Final)"
@@ -139,41 +155,22 @@
     }
   ];
 
-  // Fetch headlines helper
-  async function fetchHeadlines(rssUrl) {
-    try {
-      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
-      const dataText = await res.text();
-      const json = JSON.parse(dataText);
-      const data = JSON.parse(json.contents);
-      if (!data.items) throw new Error('Failed to fetch RSS');
-      return data.items.slice(0, 10).map(item => item.title);
-    } catch (e) {
-      console.error(e);
-      return ['Failed to load news.'];
-    }
-  }
-
   // Fill content for each sport section
-  async function fillSections() {
+  function fillSections() {
     for (const sport of sports) {
       const container = document.getElementById(`section-${sport.id}`);
       const headlinesDiv = container.querySelector('.headlines');
       const scoresDiv = container.querySelector('.scores');
       const betsDiv = container.querySelector('.bets');
 
-      // Fetch headlines
-      const headlines = await fetchHeadlines(sport.rss);
-
       headlinesDiv.innerHTML = '';
-      headlines.forEach(h => {
+      sport.headlines.forEach(h => {
         const span = document.createElement('span');
         span.className = 'headline-item';
         span.textContent = h;
         headlinesDiv.appendChild(span);
       });
 
-      // Show scores
       scoresDiv.innerHTML = '';
       sport.scores.forEach(s => {
         const span = document.createElement('span');
@@ -182,7 +179,6 @@
         scoresDiv.appendChild(span);
       });
 
-      // Show bets
       betsDiv.innerHTML = '';
       sport.bets.forEach(b => {
         const span = document.createElement('span');
@@ -201,7 +197,6 @@
     function step(timestamp) {
       if (!start) start = timestamp;
       const elapsed = timestamp - start;
-      // Calculate current scroll position (loops)
       const progress = (elapsed % duration) / duration;
       const x = -progress * totalWidth;
       element.style.transform = `translateX(${x}px)`;
@@ -215,11 +210,11 @@
     const scrollables = section.querySelectorAll('.scrolling-content');
     scrollables.forEach(el => {
       el.style.transform = 'translateX(0)';
-      animateScroll(el, 30000); // 30 seconds for full scroll
+      animateScroll(el, 30000);
     });
   }
 
-  // Stop scrolling animations by resetting transform (simplest way)
+  // Stop scrolling animations by resetting transform
   function stopScrolling(section) {
     const scrollables = section.querySelectorAll('.scrolling-content');
     scrollables.forEach(el => {
@@ -227,7 +222,6 @@
     });
   }
 
-  // Cycle between sections with fade + scroll reset
   let currentIndex = 0;
   const fadeDuration = 1000; // ms
 
@@ -238,9 +232,23 @@
     const prevSection = document.getElementById(`section-${sports[prevIndex].id}`);
     const nextSection = document.getElementById(`section-${sports[currentIndex].id}`);
 
-    // Fade out previous
     prevSection.classList.remove('active');
     stopScrolling(prevSection);
+
+    setTimeout(() => {
+      nextSection.classList.add('active');
+      startScrolling(nextSection);
+    }, fadeDuration);
+  }
+
+  fillSections();
+  const firstSection = document.getElementById(`section-${sports[0].id}`);
+  startScrolling(firstSection);
+  setInterval(cycleSections, 12000);
+</script>
+</body>
+</html>
+
 
   
   
