@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Custom Sports Ticker</title>
+<title>Fading + Scrolling Sports Ticker</title>
 <style>
   body {
     margin: 0; background: #111; color: white; font-family: Arial, sans-serif;
@@ -12,63 +12,134 @@
   }
   #ticker {
     position: relative;
-    height: 50px;
+    height: 70px;
     border-top: 2px solid #444;
     border-bottom: 2px solid #444;
     overflow: hidden;
     padding: 0 20px;
     display: flex;
     align-items: center;
+    font-weight: bold;
+    font-size: 18px;
   }
-  .headline-section {
+  .section {
     position: absolute;
     width: 100%;
+    top: 0;
+    left: 0;
     opacity: 0;
     transition: opacity 1s ease-in-out;
     white-space: nowrap;
-    font-weight: bold;
-    font-size: 20px;
+    overflow: hidden;
   }
-  .headline-section.active {
+  .section.active {
     opacity: 1;
     position: relative;
-  }
-  .headline-item {
-    display: inline-block;
-    margin-right: 40px;
   }
   .label {
     font-weight: 900;
     color: #0af;
     margin-right: 15px;
+    flex-shrink: 0;
+  }
+  .scrolling-content {
+    display: inline-block;
+    white-space: nowrap;
+    will-change: transform;
+  }
+  .headline-item, .score-item, .bet-item {
+    display: inline-block;
+    margin-right: 40px;
+  }
+  .scores, .bets {
+    margin-top: 5px;
+    font-weight: normal;
+    font-size: 14px;
+    color: #ddd;
   }
 </style>
 </head>
 <body>
 <div id="ticker">
-  <div id="section-nba" class="headline-section active"><span class="label">NBA:</span>Loading news...</div>
-  <div id="section-nfl" class="headline-section"><span class="label">NFL:</span>Loading news...</div>
-  <div id="section-mlb" class="headline-section"><span class="label">MLB:</span>Loading news...</div>
-  <div id="section-nhl" class="headline-section"><span class="label">NHL:</span>Loading news...</div>
-  <div id="section-bets" class="headline-section"><span class="label">TOP BETS:</span>Loading bets...</div>
+  <div id="section-nba" class="section active">
+    <span class="label">NBA</span>
+    <div class="scrolling-content headlines"></div>
+    <div class="scrolling-content scores"></div>
+    <div class="scrolling-content bets"></div>
+  </div>
+  <div id="section-nfl" class="section">
+    <span class="label">NFL</span>
+    <div class="scrolling-content headlines"></div>
+    <div class="scrolling-content scores"></div>
+    <div class="scrolling-content bets"></div>
+  </div>
+  <div id="section-mlb" class="section">
+    <span class="label">MLB</span>
+    <div class="scrolling-content headlines"></div>
+    <div class="scrolling-content scores"></div>
+    <div class="scrolling-content bets"></div>
+  </div>
+  <div id="section-nhl" class="section">
+    <span class="label">NHL</span>
+    <div class="scrolling-content headlines"></div>
+    <div class="scrolling-content scores"></div>
+    <div class="scrolling-content bets"></div>
+  </div>
 </div>
 
 <script>
-  const sections = [
-    { id: 'section-nba', rss: 'https://www.espn.com/espn/rss/nba/news' },
-    { id: 'section-nfl', rss: 'https://www.espn.com/espn/rss/nfl/news' },
-    { id: 'section-mlb', rss: 'https://www.espn.com/espn/rss/mlb/news' },
-    { id: 'section-nhl', rss: 'https://www.espn.com/espn/rss/nhl/news' }
+  const sports = [
+    {
+      id: 'nba',
+      rss: 'https://www.espn.com/espn/rss/nba/news',
+      scores: [
+        "Lakers 102 - Celtics 99 (Final)",
+        "Bucks 110 - Nets 115 (OT)"
+      ],
+      bets: [
+        "Lakers -3.5 vs Celtics",
+        "Bucks +4 vs Nets"
+      ]
+    },
+    {
+      id: 'nfl',
+      rss: 'https://www.espn.com/espn/rss/nfl/news',
+      scores: [
+        "Packers 24 - Bears 21 (Final)",
+        "Cowboys 28 - Giants 27 (Final)"
+      ],
+      bets: [
+        "Packers -2.5 vs Bears",
+        "Cowboys ML vs Giants"
+      ]
+    },
+    {
+      id: 'mlb',
+      rss: 'https://www.espn.com/espn/rss/mlb/news',
+      scores: [
+        "Yankees 5 - Red Sox 3 (Final)",
+        "Dodgers 7 - Giants 6 (Final)"
+      ],
+      bets: [
+        "Yankees ML vs Red Sox",
+        "Dodgers -1.5 vs Giants"
+      ]
+    },
+    {
+      id: 'nhl',
+      rss: 'https://www.espn.com/espn/rss/nhl/news',
+      scores: [
+        "Penguins 3 - Capitals 2 (Final)",
+        "Bruins 4 - Flyers 1 (Final)"
+      ],
+      bets: [
+        "Penguins vs Capitals Over 5.5",
+        "Bruins ML vs Flyers"
+      ]
+    }
   ];
 
-  // Example static bets data (replace with API if you want)
-  const exampleBets = [
-    "Lakers -3.5 vs Celtics - Game tonight 7:30pm ET",
-    "Packers +4 vs Bears - Sunday 1pm ET",
-    "Yankees ML vs Red Sox - Tomorrow 8pm ET",
-    "Penguins vs Capitals - Over 5.5 goals - Sat 6pm ET"
-  ];
-
+  // Fetch headlines helper
   async function fetchHeadlines(rssUrl) {
     try {
       const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
@@ -76,61 +147,105 @@
       const json = JSON.parse(dataText);
       const data = JSON.parse(json.contents);
       if (!data.items) throw new Error('Failed to fetch RSS');
-      return data.items.slice(0, 8).map(item => item.title);
+      return data.items.slice(0, 10).map(item => item.title);
     } catch (e) {
       console.error(e);
       return ['Failed to load news.'];
     }
   }
 
-  async function updateSections() {
-    for (const section of sections) {
-      const headlines = await fetchHeadlines(section.rss);
-      const container = document.getElementById(section.id);
-      container.innerHTML = '<span class="label">' + section.id.split('-')[1].toUpperCase() + ':</span>';
-      headlines.forEach(headline => {
+  // Fill content for each sport section
+  async function fillSections() {
+    for (const sport of sports) {
+      const container = document.getElementById(`section-${sport.id}`);
+      const headlinesDiv = container.querySelector('.headlines');
+      const scoresDiv = container.querySelector('.scores');
+      const betsDiv = container.querySelector('.bets');
+
+      // Fetch headlines
+      const headlines = await fetchHeadlines(sport.rss);
+
+      headlinesDiv.innerHTML = '';
+      headlines.forEach(h => {
         const span = document.createElement('span');
         span.className = 'headline-item';
-        span.textContent = headline;
-        container.appendChild(span);
+        span.textContent = h;
+        headlinesDiv.appendChild(span);
+      });
+
+      // Show scores
+      scoresDiv.innerHTML = '';
+      sport.scores.forEach(s => {
+        const span = document.createElement('span');
+        span.className = 'score-item';
+        span.textContent = s;
+        scoresDiv.appendChild(span);
+      });
+
+      // Show bets
+      betsDiv.innerHTML = '';
+      sport.bets.forEach(b => {
+        const span = document.createElement('span');
+        span.className = 'bet-item';
+        span.textContent = b;
+        betsDiv.appendChild(span);
       });
     }
-    // Update bets section
-    const betsContainer = document.getElementById('section-bets');
-    betsContainer.innerHTML = '<span class="label">TOP BETS:</span>';
-    exampleBets.forEach(bet => {
-      const span = document.createElement('span');
-      span.className = 'headline-item';
-      span.textContent = bet;
-      betsContainer.appendChild(span);
+  }
+
+  // Scroll animation function
+  function animateScroll(element, duration) {
+    const totalWidth = element.scrollWidth;
+    let start = null;
+
+    function step(timestamp) {
+      if (!start) start = timestamp;
+      const elapsed = timestamp - start;
+      // Calculate current scroll position (loops)
+      const progress = (elapsed % duration) / duration;
+      const x = -progress * totalWidth;
+      element.style.transform = `translateX(${x}px)`;
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // Start scrolling animations on active section
+  function startScrolling(section) {
+    const scrollables = section.querySelectorAll('.scrolling-content');
+    scrollables.forEach(el => {
+      el.style.transform = 'translateX(0)';
+      animateScroll(el, 30000); // 30 seconds for full scroll
     });
   }
 
-  let currentIndex = 0;
-  function cycleSections() {
-    const prevIndex = currentIndex;
-    currentIndex = (currentIndex + 1) % (sections.length + 1); // +1 for bets
-    if (prevIndex < sections.length) {
-      document.getElementById(sections[prevIndex].id).classList.remove('active');
-    } else {
-      document.getElementById('section-bets').classList.remove('active');
-    }
-    if (currentIndex < sections.length) {
-      document.getElementById(sections[currentIndex].id).classList.add('active');
-    } else {
-      document.getElementById('section-bets').classList.add('active');
-    }
+  // Stop scrolling animations by resetting transform (simplest way)
+  function stopScrolling(section) {
+    const scrollables = section.querySelectorAll('.scrolling-content');
+    scrollables.forEach(el => {
+      el.style.transform = 'translateX(0)';
+    });
   }
 
-  updateSections();
-  setInterval(updateSections, 5 * 60 * 1000); // refresh news every 5 mins
-  setInterval(cycleSections, 10000); // fade every 10 seconds
-</script>
-</body>
-</html>
+  // Cycle between sections with fade + scroll reset
+  let currentIndex = 0;
+  const fadeDuration = 1000; // ms
 
+  function cycleSections() {
+    const prevIndex = currentIndex;
+    currentIndex = (currentIndex + 1) % sports.length;
 
+    const prevSection = document.getElementById(`section-${sports[prevIndex].id}`);
+    const nextSection = document.getElementById(`section-${sports[currentIndex].id}`);
 
+    // Fade out previous
+    prevSection.classList.remove('active');
+    stopScrolling(prevSection);
+
+  
+  
+    
+      
      
    
 
